@@ -1,32 +1,53 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 import models
-import schemas  
 
 app = FastAPI()
+
+# CORS Configuration
+
+app.add_middleware(
+CORSMiddleware,
+allow_origins=["*"],  # allow all (for development)
+allow_credentials=True,
+allow_methods=["*"],
+allow_headers=["*"],
+)
+
 models.Base.metadata.create_all(bind=engine)
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+	db = SessionLocal()
+	try:
+		yield db
+	finally:
+		db.close()
 
 @app.get("/")
 def home():
-    return {"message": "Expense Tracker API running"}
+	return {"message": "Expense Tracker API running"}
 
 @app.post("/expenses")
-def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
-    new_expense = models.Expense(
-        title=expense.title,
-        amount=expense.amount,
-        category=expense.category,
-        date=expense.date
-    )
-    db.add(new_expense)
-    db.commit()
-    db.refresh(new_expense)
-    return new_expense
+def add_expense(title: str, amount: float, category: str, db: Session = Depends(get_db)):
+	new_expense = models.Expense(
+		title=title,
+		amount=amount,
+		category=category
+	)
+	db.add(new_expense)
+	db.commit()
+	db.refresh(new_expense)
+	return {"message": "Expense added successfully"}
+
+@app.get("/expenses")
+def get_expenses(db: Session = Depends(get_db)):
+	expenses = db.query(models.Expense).all()
+	return expenses
+
+@app.get("/expenses/total")
+def get_total_expenses(db: Session = Depends(get_db)):
+	expenses = db.query(models.Expense).all()
+	total = sum(e.amount for e in expenses)
+	return {"total_expense": total}
