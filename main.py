@@ -51,3 +51,17 @@ def get_total_expenses(db: Session = Depends(get_db)):
 	expenses = db.query(models.Expense).all()
 	total = sum(e.amount for e in expenses)
 	return {"total_expense": total}
+
+@app.delete("/expenses/{expense_id}")
+def delete_expense(expense_id: int, title: str = None, db: Session = Depends(get_db)):
+	expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+	if not expense:
+		return {"error": "Expense not found"}
+	
+	# Optional: Verify title matches if provided
+	if title and expense.title != title:
+		return {"error": "Expense title doesn't match"}
+	
+	db.delete(expense)
+	db.commit()
+	return {"message": "Expense deleted successfully"}
